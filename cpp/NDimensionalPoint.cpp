@@ -1,8 +1,8 @@
 #include "NDimensionalPoint.h"
 #include <math.h> 
 
-float NDimensionalPoint::getDistance(NDimensionalPoint p){
-    float totalDistance = 0;
+double NDimensionalPoint::getDistance(NDimensionalPoint p){
+    double totalDistance = 0;
     for(int i = 0; i < this->dimensions; i++){
         totalDistance = (pointVector[i] - p.pointVector[i])*(pointVector[i] - p.pointVector[i]);
     }
