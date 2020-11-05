@@ -1,36 +1,36 @@
 class NDimensionalPoint
 {
 private:
-    float *pointVector;
+    double *pointVector;
     int dimensions = 2;
     int clusterId = -1;
 public:
-
+    //default constructor
     NDimensionalPoint(){
-        pointVector = new float[0];
+        pointVector = new double[0];
     }
-    NDimensionalPoint(float *vec, int dim){
+    //constructor that performs a deepcopy
+    NDimensionalPoint(double *vec, int dim){
         dimensions = dim;
-        pointVector = new float[dim];
+        pointVector = new double[dim];
         for(int i = 0; i< dimensions; i++){
             pointVector[i] = vec[i];
         }
     };
-
+    //copy constructor, also here a deepcopy
     NDimensionalPoint(NDimensionalPoint *p){
         dimensions = p->dimensions;
-        pointVector = new float[dimensions];
+        pointVector = new double[dimensions];
         for(int i = 0; i< dimensions; i++){
             pointVector[i] = p->pointVector[i];
         }
     };
-
-
+    //delete the point 
     ~NDimensionalPoint(){
         delete[] pointVector;
     };
 
-    float getDistance(NDimensionalPoint p);
+    double getDistance(NDimensionalPoint p);
     void addCoordinates(NDimensionalPoint p);
     void computeDivision(int div);
     int getDimensions(){return this->dimensions;};
