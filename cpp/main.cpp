@@ -4,16 +4,15 @@
 #include "NDimensionalPoint.h"
 
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
     rapidcsv::Document doc("./dataset.csv", rapidcsv::LabelParams(-1, -1));
 
     int dimensions = doc.GetColumnCount() - 1;
-    // std::cout << dimensions << std::endl;
+    std::vector<NDimensionalPoint*> points;
 
-    std::vector<NDimensionalPoint> points;
-    for(int i = 1; i < doc.GetRowCount(); i++) {
+    for(int i = 1; i < int(doc.GetRowCount()); i++) {
         std::vector<std::string> row = doc.GetRow<std::string>(i);  
+
         double *array = new double[dimensions];
         int index = 0;
         for(auto element : row) {
@@ -22,7 +21,12 @@ int main(int argc, char const *argv[])
             }
             index++;
         }
-        // points.push_back(new NDimensionalPoint(array,dimensions));
+        
+        NDimensionalPoint* point = new NDimensionalPoint(array,dimensions);
+        points.push_back(point);
     }
-    std::cout << points.size() << std::endl;
+    
+    for(auto el : points){
+        (*el).print();
+    }
 }

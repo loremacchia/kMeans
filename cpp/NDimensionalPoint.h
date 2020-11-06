@@ -1,3 +1,5 @@
+#include <iostream>
+
 class NDimensionalPoint
 {
 private:
@@ -5,10 +7,15 @@ private:
     int dimensions = 2;
     int clusterId = -1;
 public:
+
     //default constructor
     NDimensionalPoint(){
-        pointVector = new double[0];
-    }
+        pointVector = new double[dimensions];
+        for(int i = 0; i< dimensions; i++){
+            pointVector[i] = 0;
+        }
+    };
+
     //constructor that performs a deepcopy
     NDimensionalPoint(double *vec, int dim){
         dimensions = dim;
@@ -17,6 +24,7 @@ public:
             pointVector[i] = vec[i];
         }
     };
+
     //copy constructor, also here a deepcopy
     NDimensionalPoint(NDimensionalPoint *p){
         dimensions = p->dimensions;
@@ -25,6 +33,7 @@ public:
             pointVector[i] = p->pointVector[i];
         }
     };
+    
     //delete the point 
     ~NDimensionalPoint(){
         delete[] pointVector;
@@ -34,5 +43,11 @@ public:
     void addCoordinates(NDimensionalPoint p);
     void computeDivision(int div);
     int getDimensions(){return this->dimensions;};
+    void print(){
+        for(int i = 0; i < this->dimensions; i++){
+            std::cout << pointVector[i] << "  ";
+        }
+        std::cout << dimensions << "  " << std::endl;
+    };
 };
 
