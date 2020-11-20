@@ -10,14 +10,6 @@ double NDimensionalPoint::getDistance(NDimensionalPoint p){
     return totalDistance;
 }
 
-void NDimensionalPoint::addCoordinates(NDimensionalPoint p){
-    for(int i = 0; i < this->dimensions; i++){
-        pointVector[i] += p.pointVector[i];
-    }
-}
-
-void NDimensionalPoint::computeDivision(int div){
-    for(int i = 0; i < this->dimensions; i++){
-        pointVector[i] /= div;
-    }
+double* NDimensionalPoint::getPoint() {
+    return this->pointVector;
 }

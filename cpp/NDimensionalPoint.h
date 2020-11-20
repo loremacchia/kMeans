@@ -1,13 +1,12 @@
 #include <iostream>
 
-class NDimensionalPoint
-{
-private:
+class NDimensionalPoint {
+protected:
     double *pointVector;
     int dimensions = 2;
     int clusterId = -1;
-public:
 
+public:
     //default constructor
     NDimensionalPoint(){
         pointVector = new double[dimensions];
@@ -35,14 +34,17 @@ public:
     };
     
     //delete the point 
-    ~NDimensionalPoint(){
+    virtual ~NDimensionalPoint(){
         delete[] pointVector;
     };
 
     double getDistance(NDimensionalPoint p);
-    void addCoordinates(NDimensionalPoint p);
-    void computeDivision(int div);
     int getDimensions(){return this->dimensions;};
+    double* getPoint();
+    void setClusterId(int id) {
+        clusterId = id;
+    }
+
     void print(){
         for(int i = 0; i < this->dimensions; i++){
             std::cout << pointVector[i] << "  ";

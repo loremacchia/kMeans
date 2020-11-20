@@ -1,7 +1,10 @@
 #include <iostream>
 #include <vector>
 #include "rapidcsv.h"
+
+#include "Cluster.h"
 #include "NDimensionalPoint.h"
+#include "Clustroid.h"
 
 
 int main(int argc, char const *argv[]) {
