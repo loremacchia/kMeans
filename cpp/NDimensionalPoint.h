@@ -1,3 +1,4 @@
+#pragma once
 #include <iostream>
 
 class NDimensionalPoint {
@@ -31,25 +32,18 @@ public:
         for(int i = 0; i< dimensions; i++){
             pointVector[i] = p->pointVector[i];
         }
+        clusterId = p->clusterId;
     };
     
     //delete the point 
     virtual ~NDimensionalPoint(){
-        delete[] pointVector;
+        // delete[] pointVector;
     };
 
     double getDistance(NDimensionalPoint p);
-    int getDimensions(){return this->dimensions;};
+    int getDimensions();
     double* getPoint();
-    void setClusterId(int id) {
-        clusterId = id;
-    }
-
-    void print(){
-        for(int i = 0; i < this->dimensions; i++){
-            std::cout << pointVector[i] << "  ";
-        }
-        std::cout << dimensions << "  " << std::endl;
-    };
+    void setClusterId(int id);
+    void print();
 };
 

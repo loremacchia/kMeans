@@ -1,3 +1,4 @@
+#pragma once
 #include "NDimensionalPoint.h"
 
 class Clustroid : public NDimensionalPoint{
