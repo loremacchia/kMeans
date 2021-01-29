@@ -35,11 +35,6 @@ public:
         clusterId = p->clusterId;
     };
     
-    //delete the point 
-    __host__ __device__ virtual ~NDimensionalPoint(){
-        // delete[] pointVector;
-    };
-
     __host__ __device__ double getDistance(NDimensionalPoint p);
     int getDimensions();
     __host__ __device__  double* getPoint();

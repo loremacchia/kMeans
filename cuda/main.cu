@@ -13,34 +13,30 @@
 const int k = 3;
 NDimensionalPoint* getDataset(int* length);
 NDimensionalPoint* getFarClustroids(int k, int pointsLength, NDimensionalPoint* points);
-__global__ void assignCluster(int pointsLength, Cluster* clusters, NDimensionalPoint* points);
+__global__ void assignCluster(int length, Cluster* clusters, NDimensionalPoint* points);
 
-int main(int argc, char const *argv[]) {
-    int pointsLength;
+int main() {
+    int pointsLength = 5;
     NDimensionalPoint* points = getDataset(&pointsLength);
+    
+    NDimensionalPoint* clustroidPoints = getFarClustroids(k, pointsLength, points);
+
     for (int i = 0; i < pointsLength; i++) {
         points[i].print();
     }
-    NDimensionalPoint* clustroidPoints = getFarClustroids(k, pointsLength, points);
-    // Print clustroids
-    // for(int i = 0; i < k; i++){
-    //     clustroidPoints[i].print();
-    // }
-    // std::cout << std::endl << std::endl;
 
     // Init the real clusters with the found clustroids
     Cluster* clusters[k];
     for (int i = 0; i < k; i++) {
         clustroidPoints[i].setClusterId(i);
         clusters[i] = new Cluster(i, &clustroidPoints[i]);
-        // clusters[i]->print();
     }
+
+    for (int i = 0; i < k; i++) {
+        clusters[i]->print();
+    }
+    /*
     double distFromPrev; // Variable that keeps track for each cluster how far is the new clustroid wrt the previous 
-
-
-
-
-
     do {
 
         assignCluster<<<(pointsLength +127)/128,128>>>(pointsLength, *clusters, points);
@@ -53,12 +49,12 @@ int main(int argc, char const *argv[]) {
         }
         // std::cout << std::endl;
     } while (distFromPrev > 0); // Stopping condition
-
+*/
 }
 
 
-__global__ void assignCluster(int pointsLength, Cluster* clusters, NDimensionalPoint* points){
-    if(threadIdx.x < pointsLength) {
+__global__ void assignCluster(int length, Cluster* clusters, NDimensionalPoint* points){
+    if(threadIdx.x < length) {
         int idx = threadIdx.x;
         double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
         double newDist = 0; //Distance from each Cluster
@@ -76,41 +72,21 @@ __global__ void assignCluster(int pointsLength, Cluster* clusters, NDimensionalP
 }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 NDimensionalPoint* getDataset(int* lenght) {
     rapidcsv::Document doc("./dataset.csv", rapidcsv::LabelParams(-1, -1));
     int dimensions = doc.GetColumnCount() - 1;
     int rows = int(doc.GetRowCount()) - k;
     *lenght = rows;
-    NDimensionalPoint *points = new NDimensionalPoint[rows];
+    printf("%d\n",rows);
+    NDimensionalPoint *points = new NDimensionalPoint[10];
     for(int i = 0; i < rows; i++) {
         std::vector<std::string> row = doc.GetRow<std::string>(i);  
         double *array = new double[dimensions];
         int index = 0;
         for(auto element : row) {
             if(index != dimensions) {
-                array[index] = std::stof(element);
+                // std::cout << element << std::endl;
+                array[index] = std::atof(element.c_str());
             }
             index++;
         }
