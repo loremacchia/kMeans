@@ -2,6 +2,7 @@
 #include <vector>
 #include <map> 
 #include <string>
+#include <stdio.h>
 #include <chrono>
 #include "rapidcsv.h"
 
@@ -14,6 +15,7 @@ const int k = 3;
 NDimensionalPoint* getDataset(int* length);
 NDimensionalPoint* getFarClustroids(int k, int pointsLength, NDimensionalPoint* points);
 __global__ void assignCluster(int length, Cluster* clusters, NDimensionalPoint* points);
+
 
 int main() {
     int pointsLength = 5;
@@ -35,12 +37,17 @@ int main() {
     for (int i = 0; i < k; i++) {
         clusters[i]->print();
     }
-    /*
     double distFromPrev; // Variable that keeps track for each cluster how far is the new clustroid wrt the previous 
     do {
+        printf("\n\n %d \n\n", pointsLength);
+        // dim3 DimGrid((pointsLength +127)/128, 0, 0);
+        // dim3 DimBlock(128, 0, 0);
+        assignCluster<<<1, 32>>>(pointsLength, *clusters, points);
 
-        assignCluster<<<(pointsLength +127)/128,128>>>(pointsLength, *clusters, points);
-
+        for (int i = 0; i < k; i++) {
+            clusters[i]->print();
+        }
+        cudaDeviceSynchronize();
         // Compute the new real clustroid for each Cluster and computes the distance from current and previous clustroids
         distFromPrev = 0;
         for (int i = 0; i < k; i++) {
@@ -49,26 +56,38 @@ int main() {
         }
         // std::cout << std::endl;
     } while (distFromPrev > 0); // Stopping condition
-*/
+
+    for (int i = 0; i < k; i++) {
+        clusters[i]->print();
+    }
+
 }
 
 
 __global__ void assignCluster(int length, Cluster* clusters, NDimensionalPoint* points){
-    if(threadIdx.x < length) {
-        int idx = threadIdx.x;
+    int idx = threadIdx.x + blockIdx.x*blockDim.x;
+    printf("gig %d\n",idx);
+    if(idx < length) {
+        printf("fif %d\n",idx);
         double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
         double newDist = 0; //Distance from each Cluster
         int clustId = -1; // Id of the nearest Cluster
-        for (int i = 0; i < k; i++) {
-            newDist = clusters[i].getDistance(points[idx]);
+        printf("bib %d\n",idx);
+        for (int i = 0; i < k; i++) { //TODO parallelizzare ulteriormente?
+            printf("did %d %d\n",idx,k);
+            newDist = clusters[i].getDistance(points[idx]); //TODO usare solamente un vettore di centroidi invece che clusters
+            printf("sis %f\n",newDist);
             if(newDist < dist) {
                 dist = newDist;
                 clustId = i;
             }
-        }
-        clusters[clustId].addPoint(&(points[idx]));
+        }printf("rir %d\n",idx);
+        points[idx].print();
+        printf("pto %d in %d\n",idx,clustId);
+        clusters[clustId].addPoint(&(points[idx])); //TODO atomic add
         points[idx].setClusterId(clustId);
     }
+    __syncthreads();
 }
 
 
@@ -123,3 +142,4 @@ NDimensionalPoint* getFarClustroids(int k, int pointsLength, NDimensionalPoint* 
     }
     return realPoints;
 }
+

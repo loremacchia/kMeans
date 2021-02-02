@@ -39,6 +39,6 @@ public:
     int getDimensions();
     __host__ __device__  double* getPoint();
     __host__ __device__ void setClusterId(int id);
-    void print();
+    __host__ __device__ void print();
 };
 

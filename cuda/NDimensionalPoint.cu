@@ -22,10 +22,10 @@ __host__ __device__ double NDimensionalPoint::getDistance(NDimensionalPoint p){
     return totalDistance;
 }
 
-void NDimensionalPoint::print(){
+__host__ __device__ void NDimensionalPoint::print(){
     for(int i = 0; i < this->dimensions; i++){
-        std::cout << pointVector[i] << "  ";
+        printf("%f ", pointVector[i]);
     }
-    std::cout << "dim: " << dimensions << "  cluster: " << clusterId << std::endl;
+    printf("dim: %d  cluster: %d\n",dimensions, clusterId);
 }
 
