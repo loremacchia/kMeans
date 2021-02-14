@@ -2,10 +2,7 @@
 #include <math.h> 
 #include <cuda_runtime.h>
 
-#define THREADS_PER_BLOCK = 128;
-#define TILE_WIDTH = THREADS_PER_BLOCK*3;
-
-
+//Function to make atomicAdd usable for double
 #if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
 #else
 __device__ double atomicAdd(double* address, double val)
@@ -24,24 +21,56 @@ __device__ double atomicAdd(double* address, double val)
 }
 #endif
 
-double* getDataset(int* lenght, int* dim);
+//Function declarations
+double* getDataset();
 double* getFarCentroids(double *points, int pointsLength, int dimensions);
-__global__ void assignCluster(int length, double *points, double *centroids, int *pointsInCluster, double *newCentroids);
-__global__ void assignCluster1(int length, double *points, double *centroids, int *pointsInCluster, double *newCentroids);
-__global__ void assignCluster2(int length, double *points, double *centroids, int *pointsInCluster, double *newCentroids);
+__global__ void assignCluster(int dataLength, double *points, double *centroids, int *pointsInCluster, double *newCentroids);
+__global__ void assignCluster1(int dataLength, bool pointsInLocal, bool pointsInShared, double *points, double *centroids, int *pointsInCluster, double *newCentroids);
+__global__ void assignCluster2(int dataLength, bool centroidsInConstant, bool centroidsInShared, double *points, double *centroids, int *pointsInCluster, double *newCentroids);
 __global__ void computeDivision(double *centroids, int *pointsInCluster, double *newCentroids, double *distanceFromOld);
+int getDataLength();
+int getDimensions();
 
 
-
+//Project parameters
 const int k = 3;
 const int dimensions = 2;
-const int tileWidth = 128*dimensions; // TODO togliere il 2 e mettere dimensions, togliere 128 e mettere thread per block
-__constant__ double centroidsConst[k*dimensions]; //togliere il 2 e mettere dimensions
+const int threadPerBlock = 128;
+const int tileWidth = threadPerBlock*dimensions;
+__constant__ double centroidsConst[k*dimensions];
+
 
 int main(int argc, char const *argv[]) {
-    int dataLength;
-    int dim;
-    double *points = getDataset(&dataLength, &dim);
+    bool normal, pointsInLocal, pointsInShared, centroidsInConstant, centroidsInShared, divisionParallelized = false;
+
+    for (int i = 1;  i < argc;  ++i ) {
+        const char *arg = argv[i];
+        if ( ! strncmp ( arg, "-n", 2 )) {
+            normal = true;
+        }
+        else if ( ! strncmp ( arg, "-pl", 3 ) ) {
+            pointsInLocal = true;
+        }
+        else if ( ! strncmp ( arg, "-ps", 3 ) ) {
+            pointsInShared = true;
+        }
+        else if ( ! strncmp ( arg, "-cc", 3 ) ) {
+            centroidsInConstant = true;
+        }
+        else if ( ! strncmp ( arg, "-cs", 3 ) ) {
+            centroidsInShared = true;
+        }
+        else if ( ! strncmp ( arg, "-d", 3 ) ) {
+            divisionParallelized = true;
+        }
+        else if ( ! strncmp ( arg, "-h", 3 ) ) {
+            printf("Helper for k-means cuda:\n -n: normal execution \n -pl: points will be put in local memory \n -ps: points will be put in shared memory \n -cc: centroids will be put in constant memory \n -cs: centroids will be put in shared memory \n -d: division will be parallelized \n\n\n");
+        }
+    }
+
+
+    double *points = getDataset();
+    int dataLength = getDataLength();
     double *centroids = getFarCentroids(points, dataLength, dimensions);
 
     for (int i = 0; i < dataLength; i++) {
@@ -58,6 +87,7 @@ int main(int argc, char const *argv[]) {
         printf("\n");
     }
     
+    //Allocate device memory to work with global memory 
     double *points_dev;
     cudaMalloc(&points_dev, dataLength*dimensions*sizeof(double));
     cudaMemcpy(points_dev, points, dataLength*dimensions*sizeof(double), cudaMemcpyHostToDevice);
@@ -80,15 +110,30 @@ int main(int argc, char const *argv[]) {
     double *newCentroids = new double[k*dimensions];
     int iter = 0;
     do {
-        cudaMemcpy(centroids_dev, centroids, k*dimensions*sizeof(double), cudaMemcpyHostToDevice);
+        if(normal || pointsInLocal || pointsInShared || centroidsInShared || divisionParallelized) {
+            cudaMemcpy(centroids_dev, centroids, k*dimensions*sizeof(double), cudaMemcpyHostToDevice);
+        }
+        else if(centroidsInConstant) {
+            cudaMemcpyToSymbol(centroidsConst, centroids, k*dimensions*sizeof(double));
+        }
+        // cudaMemcpy(centroids_dev, centroids, k*dimensions*sizeof(double), cudaMemcpyHostToDevice);
         // cudaMemcpyToSymbol(centroidsConst, centroids, k*dimensions*sizeof(double));
         
         cudaMemset(newCentroids_dev, 0, k*dimensions*sizeof(double));
         cudaMemset(pointsInCluster_dev, 0, k*sizeof(int));
+        if(normal || divisionParallelized) {
+            assignCluster<<<(dataLength + threadPerBlock - 1)/threadPerBlock, threadPerBlock>>>(dataLength, points_dev, centroids_dev, pointsInCluster_dev, newCentroids_dev);
+        }
+        else if(pointsInLocal || pointsInShared) {
+            assignCluster1<<<(dataLength + threadPerBlock - 1)/threadPerBlock, threadPerBlock>>>(dataLength, pointsInLocal, pointsInShared, points_dev, centroids_dev, pointsInCluster_dev, newCentroids_dev);
+        }
+        else if(centroidsInShared || centroidsInConstant) {
+            assignCluster2<<<(dataLength + threadPerBlock - 1)/threadPerBlock, threadPerBlock>>>(dataLength, centroidsInConstant, centroidsInShared, points_dev, centroids_dev, pointsInCluster_dev, newCentroids_dev);
+        }
         
-        assignCluster<<<(dataLength +127)/128, 128>>>(dataLength, points_dev, centroids_dev, pointsInCluster_dev, newCentroids_dev);
-        // assignCluster1<<<(dataLength + 128 - 1)/128, 128>>>(dataLength, points_dev, centroids_dev, pointsInCluster_dev, newCentroids_dev);
-        // assignCluster2<<<(dataLength + 128 - 1)/128, 128>>>(dataLength, points_dev, centroids_dev, pointsInCluster_dev, newCentroids_dev);
+        // assignCluster<<<(dataLength + threadPerBlock - 1)/threadPerBlock, threadPerBlock>>>(dataLength, points_dev, centroids_dev, pointsInCluster_dev, newCentroids_dev);
+        // assignCluster1<<<(dataLength + threadPerBlock - 1)/threadPerBlock, threadPerBlock>>>(dataLength, points_dev, centroids_dev, pointsInCluster_dev, newCentroids_dev);
+        // assignCluster2<<<(dataLength + threadPerBlock - 1)/threadPerBlock, threadPerBlock>>>(dataLength, points_dev, centroids_dev, pointsInCluster_dev, newCentroids_dev);
     
         cudaError_t err = cudaGetLastError();
         if (err != cudaSuccess) 
@@ -99,19 +144,54 @@ int main(int argc, char const *argv[]) {
         cudaMemcpy(pointsInCluster, pointsInCluster_dev, k*sizeof(int), cudaMemcpyDeviceToHost);
 
 
-
-        cudaMemset(distanceFromOld_dev, 0, sizeof(double));
-        computeDivision<<<(k * dimensions +127)/128, 128>>>(centroids_dev, pointsInCluster_dev, newCentroids_dev, distanceFromOld_dev);
-        cudaMemcpy(&distanceFromOld, distanceFromOld_dev, sizeof(double), cudaMemcpyDeviceToHost);
-
-        cudaMemcpy(centroids, newCentroids_dev, k*dimensions*sizeof(double), cudaMemcpyDeviceToHost);
-
-        for (int j = 0; j < k; j++) {
-            for (int x = 0; x < dimensions; x++) {
-                printf("%f ",centroids[j*dimensions + x]);
+        if(divisionParallelized) {
+            cudaMemset(distanceFromOld_dev, 0, sizeof(double));
+            computeDivision<<<(k * dimensions + threadPerBlock - 1)/threadPerBlock, threadPerBlock>>>(centroids_dev, pointsInCluster_dev, newCentroids_dev, distanceFromOld_dev);
+            
+            cudaMemcpy(&distanceFromOld, distanceFromOld_dev, sizeof(double), cudaMemcpyDeviceToHost);
+            cudaMemcpy(centroids, newCentroids_dev, k*dimensions*sizeof(double), cudaMemcpyDeviceToHost);
+            for (int j = 0; j < k; j++) {
+                for (int x = 0; x < dimensions; x++) {
+                    printf("%f ",centroids[j*dimensions + x]);
+                }
+                printf("\n");
             }
-            printf("\n");
         }
+        else {
+            distanceFromOld = 0;
+            for (int j = 0; j < k; j++) {
+                printf("%d ",pointsInCluster[j]);
+                for (int x = 0; x < dimensions; x++) {
+                    newCentroids[j*dimensions + x] /= pointsInCluster[j];
+                    printf("%f ",newCentroids[j*dimensions + x] );
+                }
+                printf("\n");
+            }
+            for (int j = 0; j < k; j++) {
+                for (int x = 0; x < dimensions; x++) {
+                    distanceFromOld += fabs(newCentroids[j*dimensions + x] - centroids[j*dimensions + x]);
+                }
+            }
+            for (int j = 0; j < k; j++) {
+                for (int x = 0; x < dimensions; x++) {
+                    centroids[j*dimensions + x] = newCentroids[j*dimensions + x];
+                }
+            } 
+        }
+
+
+        // cudaMemset(distanceFromOld_dev, 0, sizeof(double));
+        // computeDivision<<<(k * dimensions + threadPerBlock - 1)/threadPerBlock, threadPerBlock>>>(centroids_dev, pointsInCluster_dev, newCentroids_dev, distanceFromOld_dev);
+        // cudaMemcpy(&distanceFromOld, distanceFromOld_dev, sizeof(double), cudaMemcpyDeviceToHost);
+
+        // cudaMemcpy(centroids, newCentroids_dev, k*dimensions*sizeof(double), cudaMemcpyDeviceToHost);
+
+        // for (int j = 0; j < k; j++) {
+        //     for (int x = 0; x < dimensions; x++) {
+        //         printf("%f ",centroids[j*dimensions + x]);
+        //     }
+        //     printf("\n");
+        // }
 
 
         // distanceFromOld = 0;
@@ -146,9 +226,9 @@ int main(int argc, char const *argv[]) {
 }
 
 //Implementazione iniziale
-__global__ void assignCluster(int length, double *points, double *centroids, int *pointsInCluster, double *newCentroids){
+__global__ void assignCluster(int dataLength, double *points, double *centroids, int *pointsInCluster, double *newCentroids){
     int idx = threadIdx.x + blockIdx.x*blockDim.x;
-    if(idx < length) {
+    if(idx < dataLength) {
         double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
         int clustId = -1; // Id of the nearest Cluster
 
@@ -178,29 +258,44 @@ __global__ void assignCluster(int length, double *points, double *centroids, int
 }
 
 //Each thread copies its point into its local memory or into shared
-__global__ void assignCluster1(int length, double *points, double *centroids, int *pointsInCluster, double *newCentroids){
+__global__ void assignCluster1(int dataLength, bool pointsInLocal, bool pointsInShared, double *points, double *centroids, int *pointsInCluster, double *newCentroids){
     int idx = threadIdx.x + blockIdx.x*blockDim.x;
+    double *localPoints = new double[dimensions]; //è in local memory 
+    __shared__ double sharedPoints[tileWidth];//Each thread has a copy of its point into the shared memory (tiling)
 
+    if(pointsInLocal) {
+        for (int x = 0; x < dimensions; x++) {
+            localPoints[x] = points[idx*dimensions + x];
+        }
+    }
+    if(pointsInShared){
+        for (int x = 0; x < dimensions; x++) {
+            sharedPoints[threadIdx.x*dimensions + x] = points[idx*dimensions + x];
+        }
+    }
     // double *localPoints = new double[dimensions]; //è in local memory 
     // for (int x = 0; x < dimensions; x++) {
     //     localPoints[x] = points[idx*dimensions + x];
     // }
 
-
-    __shared__ double sharedPoints[tileWidth];//Each thread has a copy of its point into the shared memory (tiling)
-    for (int x = 0; x < dimensions; x++) {
-        sharedPoints[threadIdx.x*dimensions + x] = points[idx*dimensions + x];
-    }
+    // __shared__ double sharedPoints[tileWidth];//Each thread has a copy of its point into the shared memory (tiling)
+    //     for (int x = 0; x < dimensions; x++) {
+    //         sharedPoints[threadIdx.x*dimensions + x] = points[idx*dimensions + x];
+    //     }
     __syncthreads();
     
-    if(idx < length) {
+    if(idx < dataLength) {
         double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
         int clustId = -1; // Id of the nearest Cluster
         for (int j = 0; j < k; j++) {
             double newDist = 0; //Distance from current Cluster
             for (int x = 0; x < dimensions; x++) {
+                if(pointsInLocal)
+                    newDist += fabs(localPoints[x] - centroids[j*dimensions + x]);
+                if(pointsInShared)
+                    newDist += fabs(sharedPoints[threadIdx.x*dimensions + x] - centroids[j*dimensions + x]);
                 // newDist += fabs(localPoints[x] - centroids[j*dimensions + x]);
-                newDist += fabs(sharedPoints[threadIdx.x*dimensions + x] - centroids[j*dimensions + x]);
+                // newDist += fabs(sharedPoints[threadIdx.x*dimensions + x] - centroids[j*dimensions + x]);
             }
             if(newDist < dist) {
                 dist = newDist;
@@ -210,32 +305,43 @@ __global__ void assignCluster1(int length, double *points, double *centroids, in
         __syncthreads();
         
         for (int x = 0; x < dimensions; x++) {
+            if(pointsInLocal)
+                atomicAdd(&(newCentroids[clustId*dimensions + x]), localPoints[x]);
+            if(pointsInShared)
+                atomicAdd(&(newCentroids[clustId*dimensions + x]), sharedPoints[threadIdx.x*dimensions + x]);
             // atomicAdd(&(newCentroids[clustId*dimensions + x]), localPoints[x]);
-            atomicAdd(&(newCentroids[clustId*dimensions + x]), sharedPoints[threadIdx.x*dimensions + x]);
+            // atomicAdd(&(newCentroids[clustId*dimensions + x]), sharedPoints[threadIdx.x*dimensions + x]);
         }        
         atomicAdd(&(pointsInCluster[clustId]),1);
     }
 }
 
 //here centroids are put in shared or constant memory
-__global__ void assignCluster2(int length, double *points, double *centroids, int *pointsInCluster, double *newCentroids){
+__global__ void assignCluster2(int dataLength, bool centroidsInConstant, bool centroidsInShared, double *points, double *centroids, int *pointsInCluster, double *newCentroids){
     int idx = threadIdx.x + blockIdx.x*blockDim.x;
 
-    __shared__ double centroidsLocal[dimensions*k];
-    if(threadIdx.x < dimensions*k) {
-        centroidsLocal[threadIdx.x] = centroids[threadIdx.x];
+    __shared__ double centroidsShared[dimensions*k];
+    if(centroidsInShared){
+        if(threadIdx.x < dimensions*k) {
+            centroidsShared[threadIdx.x] = centroids[threadIdx.x];
+        }
     }
     __syncthreads();
     
-    if(idx < length) {
+    if(idx < dataLength) {
         double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
         int clustId = -1; // Id of the nearest Cluster
 
         for (int j = 0; j < k; j++) {
             double newDist = 0; //Distance from each Cluster
             for (int x = 0; x < dimensions; x++) {
+                
+                if(centroidsInConstant)
+                    newDist += fabs(points[idx*dimensions + x] - centroidsConst[j*dimensions + x]);
+                if(centroidsInShared)
+                    newDist += fabs(points[idx*dimensions + x] - centroidsShared[j*dimensions + x]);
                 // newDist += fabs(points[idx*dimensions + x] - centroidsConst[j*dimensions + x]);
-                newDist += fabs(points[idx*dimensions + x] - centroidsLocal[j*dimensions + x]);
+                // newDist += fabs(points[idx*dimensions + x] - centroidsShared[j*dimensions + x]);
             }
             if(newDist < dist) {
                 dist = newDist;
@@ -276,15 +382,20 @@ __global__ void computeDivision(double *centroids, int *pointsInCluster, double 
 
 
 
+int getDataLength(){
+    rapidcsv::Document doc("./dataset.csv", rapidcsv::LabelParams(-1, -1));
+    return int(doc.GetRowCount()) - k;
+}
 
+int getDimensions(){
+    rapidcsv::Document doc("./dataset.csv", rapidcsv::LabelParams(-1, -1));
+    return doc.GetColumnCount() - 1;
+}
 
-double* getDataset(int* lenght, int* dim) {
+double* getDataset() {
     rapidcsv::Document doc("./dataset.csv", rapidcsv::LabelParams(-1, -1));
     const int rows = int(doc.GetRowCount()) - k;
     const int dimensions = doc.GetColumnCount() - 1;
-    *lenght = rows;
-    *dim = dimensions;
-    printf("%d\n",rows);
     double *points = new double[rows*dimensions];
     for(int i = 0; i < rows; i++) {
         std::vector<std::string> row = doc.GetRow<std::string>(i);  
@@ -292,7 +403,6 @@ double* getDataset(int* lenght, int* dim) {
         int index = 0;
         for(auto element : row) {
             if(index != dimensions) {
-                // std::cout << element << std::endl;
                 points[i*dimensions + index] = std::atof(element.c_str());
             }
             index++;
