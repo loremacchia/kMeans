@@ -123,6 +123,11 @@ int main(int argc, char const *argv[]) {
     
     cudaFree(points_dev);
     cudaFree(centroids_dev);
+    cudaFree(blocksCentroids);
+    cudaFree(blocksPointPerCluster);
+    cudaFree(finalTotPoints);
+    cudaFree(finalCentroids);
+
     return 0;
 }
 
@@ -150,7 +155,7 @@ __global__ void assignCluster3(int length, int dim, double *points, double *cent
         for (int j = 0; j < k; j++) {
             double newDist = 0; //Distance from each Cluster
             for (int x = 0; x < dimensions; x++) {
-                newDist += fabsf(points[idx*dimensions + x] - centroids[j*dimensions + x]);
+                newDist += fabs(points[idx*dimensions + x] - centroids[j*dimensions + x]);
             }
             if(newDist < dist) {
                 dist = newDist;
