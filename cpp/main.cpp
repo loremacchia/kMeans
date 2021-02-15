@@ -24,11 +24,17 @@ int main(int argc, char const *argv[]) {
         }
         printf("\n");
     }
-    
+
     double distanceFromOld = 0;
+    int pointsInCluster[k]; 
+    double *newCentroids = new double[k*dimensions];
     do {
-        int pointsInCluster[k]; 
-        double *newCentroids = new double[k*dimensions];
+        for (int x = 0; x < k; x++) {
+            pointsInCluster[x] = 0;
+        }
+        for (int x = 0; x < k*dimensions; x++) {
+            newCentroids[x] = 0;
+        }
         for (int i = 0; i < dataLength; i++) {
             double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
             int clustId = -1; // Id of the nearest Cluster
@@ -44,8 +50,8 @@ int main(int argc, char const *argv[]) {
             }
             for (int x = 0; x < dimensions; x++) {
                 newCentroids[clustId*dimensions + x] += points[i*dimensions + x];
-                pointsInCluster[clustId]++;
             }
+            pointsInCluster[clustId]++;
         }
         distanceFromOld = 0;
         for (int j = 0; j < k; j++) {
@@ -63,8 +69,9 @@ int main(int argc, char const *argv[]) {
                 centroids[j*dimensions + x] = newCentroids[j*dimensions + x];
             }
         }
-        printf("%f\n",distanceFromOld);
-    } while (distanceFromOld > 0.0000001);
+
+    } while (distanceFromOld > 0.00001);
+    printf("\n");
     
     return 0;
 }
