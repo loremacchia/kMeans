@@ -1,6 +1,11 @@
 #include "rapidcsv.h"
 #include <math.h> 
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
 #include <cuda_runtime.h>
+
 
 //Function to make atomicAdd usable for double
 #if !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600
@@ -81,33 +86,31 @@ int main(int argc, char const *argv[]) {
         }
     }
 
-    printf(normal ? "normal true\n" : "normal false\n");
-    printf(pointsInLocal ? "pointsInLocal true\n" : "pointsInLocal false\n");
-    printf(pointsInShared ? "pointsInShared true\n" : "pointsInShared false\n");
-    printf(centroidsInConstant ? "centroidsInConstant true\n" : "centroidsInConstant false\n");
-    printf(centroidsInShared ? "centroidsInShared true\n" : "centroidsInShared false\n");
-    printf(divisionParallelized ? "divisionParallelized true\n" : "divisionParallelized false\n");
-    printf(reduce ? "reduce true\n" : "reduce false\n");
-    
-
     double *points = getDataset();
     int dataLength = getDataLength();
     double *centroids = getFarCentroids(points, dataLength, dimensions);
     int numBlocks = (dataLength + threadPerBlock - 1)/threadPerBlock;
 
-    for (int i = 0; i < dataLength; i++) {
-        for (int j = 0; j < dimensions; j++) {
-            printf("%f ", points[i*dimensions + j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-    for (int i = 0; i < k; i++) {
-        for (int j = 0; j < dimensions; j++) {
-            printf("%f ", centroids[i*dimensions + j]);
-        }
-        printf("\n");
-    }
+    // for (int i = 0; i < dataLength; i++) {
+    //     for (int j = 0; j < dimensions; j++) {
+    //         printf("%f ", points[i*dimensions + j]);
+    //     }
+    //     printf("\n");
+    // }
+    // printf("\n");
+    // for (int i = 0; i < k; i++) {
+    //     for (int j = 0; j < dimensions; j++) {
+    //         printf("%f ", centroids[i*dimensions + j]);
+    //     }
+    //     printf("\n");
+    // }
+
+
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+
+    cudaEventRecord(start, 0);
     
     //Allocate device memory to work with global memory 
     double *points_dev;
@@ -138,13 +141,21 @@ int main(int argc, char const *argv[]) {
         cudaMalloc(&distanceFromOld_dev, sizeof(double));
     }
 
-
-
     double distanceFromOld = 0;
     int *pointsInCluster = new int[k]; 
     double *newCentroids = new double[k*dimensions];
-    int iter = 0;
+    // int iter = 0;
+    std::vector<double> times;
+
+    cudaEventRecord(stop, 0);
+    cudaEventSynchronize(stop);
+
+    float outerTime;
+    cudaEventElapsedTime( &outerTime, start, stop );
+
+
     do {
+        cudaEventRecord(start, 0);
         if(normal || pointsInLocal || pointsInShared || centroidsInShared || divisionParallelized || reduce) {
             cudaMemcpy(centroids_dev, centroids, k*dimensions*sizeof(double), cudaMemcpyHostToDevice);
         }
@@ -202,20 +213,20 @@ int main(int argc, char const *argv[]) {
             cudaMemcpy(centroids, newCentroids_dev, k*dimensions*sizeof(double), cudaMemcpyDeviceToHost);
             for (int j = 0; j < k; j++) {
                 for (int x = 0; x < dimensions; x++) {
-                    printf("%f ",centroids[j*dimensions + x]);
+                    // printf("%f ",centroids[j*dimensions + x]);
                 }
-                printf("\n");
+                // printf("\n");
             }
         }
         else {
             distanceFromOld = 0;
             for (int j = 0; j < k; j++) {
-                printf("%d ",pointsInCluster[j]);
+                // printf("%d ",pointsInCluster[j]);
                 for (int x = 0; x < dimensions; x++) {
                     newCentroids[j*dimensions + x] /= pointsInCluster[j];
-                    printf("%f ",newCentroids[j*dimensions + x] );
+                    // printf("%f ",newCentroids[j*dimensions + x] );
                 }
-                printf("\n");
+                // printf("\n");
             }
             for (int j = 0; j < k; j++) {
                 for (int x = 0; x < dimensions; x++) {
@@ -228,10 +239,36 @@ int main(int argc, char const *argv[]) {
                 }
             } 
         }
-        printf("%f\n",distanceFromOld);
-    } while (distanceFromOld > 0.000001);
-    // } while (++iter < 3);
+
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+
+        float elapsedTime;
+        cudaEventElapsedTime( &elapsedTime, start, stop );
     
+        times.push_back(elapsedTime);
+        printf("%f\n", distanceFromOld);
+    } while (distanceFromOld > 0.000001);
+
+    // int *clusterAssign = new int[dataLength];
+    // int *clusterAssign_dev;
+    // cudaMalloc(&clusterAssign_dev, dataLength*sizeof(int));
+    
+
+    // cudaMemcpy(centroids_dev, centroids, k*dimensions*sizeof(double), cudaMemcpyHostToDevice);
+    // cudaMemset(newCentroids_dev, 0, k*dimensions*sizeof(double));
+    // cudaMemset(pointsInCluster_dev, 0, k*sizeof(int));
+    // computeCluster<<<numBlocks, threadPerBlock>>>(dataLength, points_dev, centroids_dev, clusterAssign_dev);
+    // cudaMemcpy(clusterAssign, clusterAssign_dev, dataLength*sizeof(int), cudaMemcpyDeviceToHost);
+            
+    // for(int i = 0; i < dataLength; i++) {
+        
+    // }
+
+    // } while (++iter < 3);
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+
     cudaFree(points_dev);
     cudaFree(centroids_dev);
     if(reduce) {
@@ -245,6 +282,44 @@ int main(int argc, char const *argv[]) {
         cudaFree(pointsInCluster_dev);
         cudaFree(distanceFromOld_dev);
     }
+
+    std::string path;
+    if(normal) {
+        path = "normal.csv";
+    }
+    else if(pointsInLocal) {
+        path = "pointsLocal.csv";
+    }
+    else if(pointsInShared) {
+        path = "pointsShared.csv";
+    }
+    else if(centroidsInConstant) {
+        path = "centroidsShared.csv";
+    }
+    else if(centroidsInShared) {
+        path = "centroidsShared.csv";
+    }
+    else if(divisionParallelized) {
+        path = "divisionParallelized.csv";
+    }
+    else if(reduce) {
+        path = "reduced.csv";
+    }
+
+    std::ofstream myfile;
+    myfile.open (path, std::ios::app);
+    myfile << dataLength;
+    for(auto element : times) {
+        outerTime += element;
+    }
+    printf("%f",outerTime);
+
+    myfile << "," << outerTime;
+    for(auto element : times) {
+        myfile << "," << element;
+    }
+    myfile << "\n";
+    myfile.close();
     return 0;
 }
 
@@ -273,6 +348,29 @@ __global__ void assignCluster(int dataLength, double *points, double *centroids,
         atomicAdd(&(pointsInCluster[clustId]),1);
     }
 }
+
+//Implementazione iniziale
+__global__ void computeCluster(int dataLength, double *points, double *centroids, int *clusterAssign){
+    int idx = threadIdx.x + blockIdx.x*blockDim.x;
+    if(idx < dataLength) {
+        double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
+        int clustId = -1; // Id of the nearest Cluster
+
+        for (int j = 0; j < k; j++) {
+            double newDist = 0; //Distance from each Cluster
+            for (int x = 0; x < dimensions; x++) {
+                newDist += fabs(points[idx*dimensions + x] - centroids[j*dimensions + x]);
+            }
+            if(newDist < dist) {
+                dist = newDist;
+                clustId = j;
+            }
+        }
+        __syncthreads();
+        clusterAssign[idx] = clustId;
+    }
+}
+
 
 //Each thread copies its point into its local memory or into shared
 __global__ void assignClusterPoints(int dataLength, bool pointsInLocal, bool pointsInShared, double *points, double *centroids, int *pointsInCluster, double *newCentroids){
