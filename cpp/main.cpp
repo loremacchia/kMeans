@@ -1,5 +1,12 @@
 #include "rapidcsv.h"
 #include <math.h> 
+#include <chrono> 
+#include <vector>
+#include <iostream>
+#include <fstream>
+using namespace std::chrono; 
+  
+
 
 double* getDataset(int* lenght, int* dim);
 double* getFarCentroids(double *points, int pointsLength, int dimensions);
@@ -10,7 +17,8 @@ int main(int argc, char const *argv[]) {
     int dimensions;
     double *points = getDataset(&dataLength, &dimensions);
     double *centroids = getFarCentroids(points, dataLength, dimensions);
-
+    std::vector<double> times;
+    /*
     for (int i = 0; i < dataLength; i++) {
         for (int j = 0; j < dimensions; j++) {
             printf("%f ", points[i*dimensions + j]);
@@ -24,11 +32,15 @@ int main(int argc, char const *argv[]) {
         }
         printf("\n");
     }
+    */
 
     double distanceFromOld = 0;
     int pointsInCluster[k]; 
     double *newCentroids = new double[k*dimensions];
+    double outerTime = 0;
     do {
+
+        auto start = high_resolution_clock::now(); 
         for (int x = 0; x < k; x++) {
             pointsInCluster[x] = 0;
         }
@@ -70,9 +82,62 @@ int main(int argc, char const *argv[]) {
             }
         }
 
+
+        auto stop = high_resolution_clock::now(); 
+
+        auto duration = duration_cast<microseconds>(stop - start); 
+        double dur = duration.count()/1000;
+
+        times.push_back(dur);
+        std::cout << duration.count() << std::endl; 
+        outerTime += dur;
+        printf("%f",distanceFromOld);
     } while (distanceFromOld > 0.00001);
-    printf("\n");
+    printf("\n%f\n",outerTime);
+
+    int *clusterAssign = new int[dataLength];
+    for (int i = 0; i < dataLength; i++) {
+        double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
+        int clustId = -1; // Id of the nearest Cluster
+        for (int j = 0; j < k; j++) {
+            double newDist = 0; //Distance from each Cluster
+            for (int x = 0; x < dimensions; x++) {
+                newDist += fabs(points[i*dimensions + x] - centroids[j*dimensions + x]);
+            }
+            if(newDist < dist) {
+                dist = newDist;
+                clustId = j;
+            }
+        }
+        clusterAssign[i] = clustId;
+    }
     
+    std::ifstream oldDataset;
+    oldDataset.open("dataset.csv");
+
+    std::ofstream newDataset;
+    newDataset.open("./newDataset.csv", std::ios::app);
+
+    std::string line;
+    int index = 0;
+    while(std::getline(oldDataset, line) && index < dataLength) {
+        newDataset << line;
+        newDataset << "," << std::to_string(clusterAssign[index]) << "\n";
+        index++;
+    }
+    
+    oldDataset.close();
+    newDataset.close();
+
+    std::ofstream myfile;
+    myfile.open ("cpp.csv", std::ios::app);
+    myfile << dataLength;
+    myfile << "," << outerTime;
+    for(auto element : times) {
+        myfile << "," << element;
+    }
+    myfile << "\n";
+    myfile.close();
     return 0;
 }
 
