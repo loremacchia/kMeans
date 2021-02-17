@@ -1,7 +1,7 @@
 import csv
 from sklearn.datasets import make_blobs
 
-sampleNumber = 1000
+sampleNumber = 10
 centerNumber = 3
 dimensions = 2
 
