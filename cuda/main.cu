@@ -213,9 +213,9 @@ int main(int argc, char const *argv[]) {
             cudaMemcpy(centroids, newCentroids_dev, k*dimensions*sizeof(double), cudaMemcpyDeviceToHost);
             for (int j = 0; j < k; j++) {
                 for (int x = 0; x < dimensions; x++) {
-                    // printf("%f ",centroids[j*dimensions + x]);
+                    printf("%f ",centroids[j*dimensions + x]);
                 }
-                // printf("\n");
+                printf("\n");
             }
         }
         else {
@@ -224,9 +224,9 @@ int main(int argc, char const *argv[]) {
                 // printf("%d ",pointsInCluster[j]);
                 for (int x = 0; x < dimensions; x++) {
                     newCentroids[j*dimensions + x] /= pointsInCluster[j];
-                    // printf("%f ",newCentroids[j*dimensions + x] );
+                    printf("%f ",newCentroids[j*dimensions + x] );
                 }
-                // printf("\n");
+                printf("\n");
             }
             for (int j = 0; j < k; j++) {
                 for (int x = 0; x < dimensions; x++) {
@@ -249,23 +249,8 @@ int main(int argc, char const *argv[]) {
         times.push_back(elapsedTime);
         printf("%f\n", distanceFromOld);
     } while (distanceFromOld > 0.000001);
-
-    // int *clusterAssign = new int[dataLength];
-    // int *clusterAssign_dev;
-    // cudaMalloc(&clusterAssign_dev, dataLength*sizeof(int));
-    
-
-    // cudaMemcpy(centroids_dev, centroids, k*dimensions*sizeof(double), cudaMemcpyHostToDevice);
-    // cudaMemset(newCentroids_dev, 0, k*dimensions*sizeof(double));
-    // cudaMemset(pointsInCluster_dev, 0, k*sizeof(int));
-    // computeCluster<<<numBlocks, threadPerBlock>>>(dataLength, points_dev, centroids_dev, clusterAssign_dev);
-    // cudaMemcpy(clusterAssign, clusterAssign_dev, dataLength*sizeof(int), cudaMemcpyDeviceToHost);
-            
-    // for(int i = 0; i < dataLength; i++) {
-        
-    // }
-
     // } while (++iter < 3);
+
     cudaEventDestroy(start);
     cudaEventDestroy(stop);
 
@@ -312,7 +297,7 @@ int main(int argc, char const *argv[]) {
     for(auto element : times) {
         outerTime += element;
     }
-    printf("%f",outerTime);
+    printf("%f\n\n\n",outerTime);
 
     myfile << "," << outerTime;
     for(auto element : times) {
