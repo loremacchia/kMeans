@@ -144,7 +144,7 @@ int main(int argc, char const *argv[]) {
     double distanceFromOld = 0;
     int *pointsInCluster = new int[k]; 
     double *newCentroids = new double[k*dimensions];
-    // int iter = 0;
+    int iter = 0;
     std::vector<double> times;
 
     cudaEventRecord(stop, 0);
@@ -213,9 +213,9 @@ int main(int argc, char const *argv[]) {
             cudaMemcpy(centroids, newCentroids_dev, k*dimensions*sizeof(double), cudaMemcpyDeviceToHost);
             for (int j = 0; j < k; j++) {
                 for (int x = 0; x < dimensions; x++) {
-                    printf("%f ",centroids[j*dimensions + x]);
+                    // printf("%f ",centroids[j*dimensions + x]);
                 }
-                printf("\n");
+                // printf("\n");
             }
         }
         else {
@@ -223,10 +223,11 @@ int main(int argc, char const *argv[]) {
             for (int j = 0; j < k; j++) {
                 // printf("%d ",pointsInCluster[j]);
                 for (int x = 0; x < dimensions; x++) {
+                    // printf("%f -- %d\n",newCentroids[j*dimensions + x], pointsInCluster[j]);
                     newCentroids[j*dimensions + x] /= pointsInCluster[j];
-                    printf("%f ",newCentroids[j*dimensions + x] );
+                    // printf("%f ",newCentroids[j*dimensions + x]);
                 }
-                printf("\n");
+                // printf("\n");
             }
             for (int j = 0; j < k; j++) {
                 for (int x = 0; x < dimensions; x++) {
@@ -248,6 +249,7 @@ int main(int argc, char const *argv[]) {
     
         times.push_back(elapsedTime);
         printf("%f\n", distanceFromOld);
+        iter++;
     } while (distanceFromOld > 0.000001);
     // } while (++iter < 3);
 
@@ -279,7 +281,7 @@ int main(int argc, char const *argv[]) {
         path = "pointsShared.csv";
     }
     else if(centroidsInConstant) {
-        path = "centroidsShared.csv";
+        path = "centroidsConstant.csv";
     }
     else if(centroidsInShared) {
         path = "centroidsShared.csv";
@@ -297,7 +299,7 @@ int main(int argc, char const *argv[]) {
     for(auto element : times) {
         outerTime += element;
     }
-    printf("%f\n\n\n",outerTime);
+    // printf("%f\n\n\n",outerTime);
 
     myfile << "," << outerTime;
     for(auto element : times) {
@@ -305,6 +307,7 @@ int main(int argc, char const *argv[]) {
     }
     myfile << "\n";
     myfile.close();
+    // printf("%d\n\n\n",iter);
     return 0;
 }
 
@@ -331,28 +334,6 @@ __global__ void assignCluster(int dataLength, double *points, double *centroids,
             atomicAdd(&(newCentroids[clustId*dimensions + x]), points[idx*dimensions + x]);
         }
         atomicAdd(&(pointsInCluster[clustId]),1);
-    }
-}
-
-//Implementazione iniziale
-__global__ void computeCluster(int dataLength, double *points, double *centroids, int *clusterAssign){
-    int idx = threadIdx.x + blockIdx.x*blockDim.x;
-    if(idx < dataLength) {
-        double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
-        int clustId = -1; // Id of the nearest Cluster
-
-        for (int j = 0; j < k; j++) {
-            double newDist = 0; //Distance from each Cluster
-            for (int x = 0; x < dimensions; x++) {
-                newDist += fabs(points[idx*dimensions + x] - centroids[j*dimensions + x]);
-            }
-            if(newDist < dist) {
-                dist = newDist;
-                clustId = j;
-            }
-        }
-        __syncthreads();
-        clusterAssign[idx] = clustId;
     }
 }
 
@@ -454,9 +435,13 @@ __global__ void assignClusterReduction(int length, int dim, double *points, doub
     if(threadIdx.x < k) {
         pointsInCluster[threadIdx.x] = 0;
     }
+
+    __syncthreads();
         
     int idx = threadIdx.x + blockIdx.x*blockDim.x;
+
     if(idx < length) {
+        
         double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
         int clustId = -1; // Id of the nearest Cluster
 
@@ -473,16 +458,23 @@ __global__ void assignClusterReduction(int length, int dim, double *points, doub
         __syncthreads();
         
         for (int x = 0; x < dimensions; x++) {
+            // printf("%d, %d\n",idx*dimensions + x, clustId*dimensions + x);
+            // if(clustId == 1){
+            //     printf("%d, %d, %f\n",x,threadIdx.x,points[idx*dimensions + x]);
+            // }
             atomicAdd(&(newCentroids[clustId*dimensions + x]), points[idx*dimensions + x]);
+            // printf("%d,  %f,  %f\n",threadIdx.x,points[idx*dimensions + x],newCentroids[clustId*dimensions + x]);
         }
         atomicAdd(&(pointsInCluster[clustId]),1);
     }
 
     if(threadIdx.x < dimensions*k) {
         blocksCentroids[threadIdx.x + blockIdx.x*dimensions*k] = newCentroids[threadIdx.x];
+        // printf("%d,  %d,  %f,  %f\n",threadIdx.x,threadIdx.x + blockIdx.x*dimensions*k,newCentroids[threadIdx.x],blocksCentroids[threadIdx.x + blockIdx.x*dimensions*k]);
     }
     if(threadIdx.x < k) {
         blocksPointPerCluster[threadIdx.x + blockIdx.x*k] = pointsInCluster[threadIdx.x];
+        // printf("%d,  %d,  %d,  %d\n",threadIdx.x,threadIdx.x + blockIdx.x*dimensions*k,pointsInCluster[threadIdx.x],blocksPointPerCluster[threadIdx.x + blockIdx.x*k]);
     }
 }
 
@@ -490,12 +482,17 @@ __global__ void assignClusterReduction(int length, int dim, double *points, doub
 //accertarsi che il numero di blocchi e di indici sia multiplo di 2
 __global__ void reduceClusters(int length, int dimensions, int numBlocks, double *finalCentroids, int *finalTotPoints, double *blocksCentroids, int *blocksPointPerCluster){
     int idx = threadIdx.x + blockIdx.x*blockDim.x;
+    
     if((blockDim.x * numBlocks / k) % 2 == 0){
         int n = blockDim.x * numBlocks * k;
         do {
             n /= 2;
             if(idx < n) {
+                // printf("%d,  %f,  %f\n", idx, blocksCentroids[idx], blocksCentroids[idx + n]);
                 atomicAdd(&(blocksCentroids[idx]), blocksCentroids[idx + n]);
+            }
+            else{
+                // printf("%d",idx);
             }
             __syncthreads();
         } while(n > k*dimensions);
@@ -517,6 +514,7 @@ __global__ void reduceClusters(int length, int dimensions, int numBlocks, double
             atomicAdd(&(finalTotPoints[idx%(k) + idx/(k)]), blocksPointPerCluster[idx]);
         }
     }
+
     __syncthreads();
 }
 
