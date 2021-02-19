@@ -95,39 +95,39 @@ int main(int argc, char const *argv[]) {
     } while (distanceFromOld > 0.00001);
     printf("\n%f\n",outerTime);
 
-    int *clusterAssign = new int[dataLength];
-    for (int i = 0; i < dataLength; i++) {
-        double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
-        int clustId = -1; // Id of the nearest Cluster
-        for (int j = 0; j < k; j++) {
-            double newDist = 0; //Distance from each Cluster
-            for (int x = 0; x < dimensions; x++) {
-                newDist += fabs(points[i*dimensions + x] - centroids[j*dimensions + x]);
-            }
-            if(newDist < dist) {
-                dist = newDist;
-                clustId = j;
-            }
-        }
-        clusterAssign[i] = clustId;
-    }
+    // int *clusterAssign = new int[dataLength];
+    // for (int i = 0; i < dataLength; i++) {
+    //     double dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
+    //     int clustId = -1; // Id of the nearest Cluster
+    //     for (int j = 0; j < k; j++) {
+    //         double newDist = 0; //Distance from each Cluster
+    //         for (int x = 0; x < dimensions; x++) {
+    //             newDist += fabs(points[i*dimensions + x] - centroids[j*dimensions + x]);
+    //         }
+    //         if(newDist < dist) {
+    //             dist = newDist;
+    //             clustId = j;
+    //         }
+    //     }
+    //     clusterAssign[i] = clustId;
+    // }
     
-    std::ifstream oldDataset;
-    oldDataset.open("dataset.csv");
+    // std::ifstream oldDataset;
+    // oldDataset.open("dataset.csv");
 
-    std::ofstream newDataset;
-    newDataset.open("./newDataset.csv", std::ios::app);
+    // std::ofstream newDataset;
+    // newDataset.open("./newDataset.csv", std::ios::app);
 
-    std::string line;
-    int index = 0;
-    while(std::getline(oldDataset, line) && index < dataLength) {
-        newDataset << line;
-        newDataset << "," << std::to_string(clusterAssign[index]) << "\n";
-        index++;
-    }
+    // std::string line;
+    // int index = 0;
+    // while(std::getline(oldDataset, line) && index < dataLength) {
+    //     newDataset << line;
+    //     newDataset << "," << std::to_string(clusterAssign[index]) << "\n";
+    //     index++;
+    // }
     
-    oldDataset.close();
-    newDataset.close();
+    // oldDataset.close();
+    // newDataset.close();
 
     std::ofstream myfile;
     myfile.open ("cpp.csv", std::ios::app);

@@ -8,8 +8,6 @@
 #include "rapidcsv.h"
 #include <cmath>
 #include <chrono>
-#include <SFML/System.hpp>
-#include <SFML/Graphics.hpp>
 
 double* getDataset(int* lenght, int* dim);
 double* getFarCentroids(double *points, int pointsLength, int dimensions);
@@ -106,9 +104,24 @@ int main(int argc, char const *argv[]) {
         printf("\n");
     }
 
+
     std::chrono::duration<double> elapsed_seconds = end-start;
     std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
-    
+
+    std::ofstream myfile;
+    myfile.open ("omp.csv", std::ios::app);
+    myfile << dataLength;
+    // for(auto element : times) {
+    //     outerTime += element;
+    // }
+    // printf("%f\n\n\n",outerTime);
+
+    myfile << "," << elapsed_seconds.count();
+    // for(auto element : times) {
+    //     myfile << "," << element;
+    // }
+    myfile << "\n";
+    myfile.close();
     return 0;
 }
 
@@ -117,7 +130,7 @@ int main(int argc, char const *argv[]) {
 
 double* getDataset(int* lenght, int* dim) {
     printf("\nParsing CSV...\n");
-    rapidcsv::Document doc("../dataset.csv", rapidcsv::LabelParams(-1, -1));
+    rapidcsv::Document doc("./dataset.csv", rapidcsv::LabelParams(-1, -1));
     const int rows = int(doc.GetRowCount()) - k;
     const int dimensions = doc.GetColumnCount() - 1;
     *lenght = rows;
