@@ -21,21 +21,6 @@ int main(int argc, char const *argv[]) {
     double *points = getDataset(&dataLength, &dimensions);
     double *centroids = getFarCentroids(points, dataLength, dimensions);
     
-    /*
-    for (int i = 0; i < dataLength; i++) {
-        for (int j = 0; j < dimensions; j++) {
-            printf("%f ", points[i*dimensions + j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-    for (int i = 0; i < k; i++) {
-        for (int j = 0; j < dimensions; j++) {
-            printf("%f ", centroids[i*dimensions + j]);
-        }
-        printf("\n");
-    }
-    */
     double distanceFromOld = 0;
     int pointsInCluster[k]; 
     double *newCentroids = new double[k*dimensions];
@@ -89,39 +74,21 @@ int main(int argc, char const *argv[]) {
                 distanceFromOld += fabs(newCentroids[j*dimensions + x] - centroids[j*dimensions + x]);
                 centroids[j*dimensions + x] = newCentroids[j*dimensions + x];
             }
-        }
-
-    printf("\n%f", distanceFromOld);
+        }    
     } while (distanceFromOld > 0.001);
-    printf("\n");
+    
     auto end = std::chrono::system_clock::now();
-
-    printf("\nFINAL CENTROIDS:\n");
-    for (int i = 0; i < k; i++) {
-        for (int j = 0; j < dimensions; j++) {
-            printf("%f ", centroids[i*dimensions + j]);
-        }
-        printf("\n");
-    }
-
-
     std::chrono::duration<double> elapsed_seconds = end-start;
     std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
     std::ofstream myfile;
     myfile.open ("omp.csv", std::ios::app);
     myfile << dataLength;
-    // for(auto element : times) {
-    //     outerTime += element;
-    // }
-    // printf("%f\n\n\n",outerTime);
-
+    printf("\n\nomp: %f\n\n\n",elapsed_seconds.count());
     myfile << "," << elapsed_seconds.count();
-    // for(auto element : times) {
-    //     myfile << "," << element;
-    // }
     myfile << "\n";
     myfile.close();
+
     return 0;
 }
 
@@ -129,13 +96,11 @@ int main(int argc, char const *argv[]) {
 
 
 double* getDataset(int* lenght, int* dim) {
-    printf("\nParsing CSV...\n");
     rapidcsv::Document doc("./dataset.csv", rapidcsv::LabelParams(-1, -1));
     const int rows = int(doc.GetRowCount()) - k;
     const int dimensions = doc.GetColumnCount() - 1;
     *lenght = rows;
     *dim = dimensions;
-    printf("%d\n",rows);
     double *points = new double[rows*dimensions];
     for(int i = 0; i < rows; i++) {
         std::vector<std::string> row = doc.GetRow<std::string>(i);  
@@ -143,13 +108,11 @@ double* getDataset(int* lenght, int* dim) {
         int index = 0;
         for(auto element : row) {
             if(index != dimensions) {
-                // std::cout << element << std::endl;
                 points[i*dimensions + index] = std::atof(element.c_str());
             }
             index++;
         }
     }
-    printf("CSV PARSED!");
     return points;
 }
 
@@ -193,4 +156,3 @@ double* getFarCentroids(double *points, int pointsLength, int dimensions) {
     }
     return realPoints;
 }
-
