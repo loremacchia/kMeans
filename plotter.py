@@ -69,37 +69,38 @@ if plot == "scatter":
 
 elif plot == "times":
     dataX = []
-    dataYOMP = []
-    dataYCPP = []
-    # dataYCUDA1 = []
-    # dataYCUDA2 = []
+    # dataYOMP = []
+    # dataYCPP = []
+    dataYCUDA1 = []
+    dataYCUDA2 = []
     # dataYCUDA3 = []
 
-    with open('omp.csv') as File:
+    # with open('omp.csv') as File:
+    #     reader = csv.reader(File, delimiter=',', quotechar=',',
+    #                         quoting=csv.QUOTE_MINIMAL)
+    #     for row in reader:
+    #         dataX.append(row[0])
+    #         dataYOMP.append(round(float(row[1]),6))
+
+    # with open('cpp.csv') as File:
+    #     reader = csv.reader(File, delimiter=',', quotechar=',',
+    #                         quoting=csv.QUOTE_MINIMAL)
+    #     for row in reader:
+    #         dataYCPP.append(round(float(row[1]),6))
+
+    with open('cuda.csv') as File:
         reader = csv.reader(File, delimiter=',', quotechar=',',
                             quoting=csv.QUOTE_MINIMAL)
         for row in reader:
             dataX.append(row[0])
-            dataYOMP.append(round(float(row[1]),6))
-
-    with open('cpp.csv') as File:
+            dataYCUDA1.append(round(float(row[1]),6))
+    
+    with open('cudaSlow.csv') as File:
         reader = csv.reader(File, delimiter=',', quotechar=',',
                             quoting=csv.QUOTE_MINIMAL)
         for row in reader:
-            dataYCPP.append(round(float(row[1]),6))
-
-    # with open('cuda1.csv') as File:
-    #     reader = csv.reader(File, delimiter=',', quotechar=',',
-    #                         quoting=csv.QUOTE_MINIMAL)
-    #     for row in reader:
-    #         dataYCUDA1.append(round(float(row[1]),6))
-    #
-    # with open('cuda2.csv') as File:
-    #     reader = csv.reader(File, delimiter=',', quotechar=',',
-    #                         quoting=csv.QUOTE_MINIMAL)
-    #     for row in reader:
-    #         dataYCUDA2.append(round(float(row[1]),6))
-    #
+            dataYCUDA2.append(round(float(row[1]),6))
+    
     # with open('cuda3.csv') as File:
     #     reader = csv.reader(File, delimiter=',', quotechar=',',
     #                         quoting=csv.QUOTE_MINIMAL)
@@ -109,10 +110,10 @@ elif plot == "times":
 
 
     fig, ax = plt.subplots()
-    ax.plot(dataX, dataYCPP, '-b', label='CPP')
-    ax.plot(dataX, dataYOMP, '-r', label='OMP')
-    # ax.plot(dataX, dataYCUDA1, '-y', label='CUDA1')
-    # ax.plot(dataX, dataYCUDA2, '-g', label='CUDA2')
+    # ax.plot(dataX, dataYCPP, '-b', label='CPP')
+    # ax.plot(dataX, dataYOMP, '-r', label='OMP')
+    ax.plot(dataX, dataYCUDA1, '-y', label='CUDA')
+    ax.plot(dataX, dataYCUDA2, '-g', label='CUDA_SLOW')
     # ax.plot(dataX, dataYCUDA3, '-p', label='CUDA3')
     plt.xlabel('#points')
     plt.ylabel('execution time (s)')
@@ -120,14 +121,16 @@ elif plot == "times":
 
     for i in range(3):
         dataX.pop()
-        dataYOMP.pop()
-        dataYCPP.pop()
+        # dataYOMP.pop()
+        # dataYCPP.pop()
+        dataYCUDA1.pop()
+        dataYCUDA2.pop()
 
     fig, ax = plt.subplots()
-    ax.plot(dataX, dataYCPP, '-b', label='CPP')
-    ax.plot(dataX, dataYOMP, '-r', label='OMP')
-    # ax.plot(dataX, dataYCUDA1, '-y', label='CUDA1')
-    # ax.plot(dataX, dataYCUDA2, '-g', label='CUDA2')
+    # ax.plot(dataX, dataYCPP, '-b', label='CPP')
+    # ax.plot(dataX, dataYOMP, '-r', label='OMP')
+    ax.plot(dataX, dataYCUDA1, '-y', label='CUDA1')
+    ax.plot(dataX, dataYCUDA2, '-g', label='CUDA2')
     # ax.plot(dataX, dataYCUDA3, '-p', label='CUDA3')
     plt.xlabel('#points')
     plt.ylabel('execution time (s)')
