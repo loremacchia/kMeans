@@ -1,4 +1,5 @@
 nvcc ./cuda/main.cu -o mainCuda
+nvcc ./cuda/mainSlow.cu -o mainSlow
 g++ ./cpp/main.cpp -o mainCpp
 g++ -o mainOmp -fopenmp ./omp/main.cpp
 
@@ -8,6 +9,7 @@ for i in {1..7}
         for j in {1..20..1}
             do
                 ./mainCuda
+                ./mainSlow
                 ./mainCpp
                 ./mainOmp
             done

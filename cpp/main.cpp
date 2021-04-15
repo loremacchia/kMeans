@@ -58,7 +58,7 @@ int main(int argc, char const *argv[]) {
 
     auto duration = duration_cast<microseconds>(stop - start); 
     outerTime = duration.count()/(double)1000;
-    printf("\n%f\n",outerTime);
+    printf("\n\ncpp: %f\n\n\n",outerTime);
 
     std::ofstream myfile;
     myfile.open ("./cpp/cpp.csv", std::ios::app);
@@ -116,7 +116,7 @@ double* getDataset(int* lenght, int* dim) {
     const int dimensions = doc.GetColumnCount() - 1;
     *lenght = rows;
     *dim = dimensions;
-    printf("%d\n",rows);
+    // printf("%d\n",rows);
     double *points = new double[rows*dimensions];
     for(int i = 0; i < rows; i++) {
         std::vector<std::string> row = doc.GetRow<std::string>(i);  

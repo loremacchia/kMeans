@@ -114,7 +114,7 @@ int main(int argc, char const *argv[]) {
     myfile << "\n";
     myfile.close();
 
-    printf("\n\n%f -- iter:%d\n\n\n",outerTime,iter);
+    printf("\n\ncuda: %f\n\n\n",outerTime);
     return 0;
 }
 

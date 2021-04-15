@@ -79,7 +79,7 @@ int main(int argc, char const *argv[]) {
     
     auto end = std::chrono::system_clock::now();
     std::chrono::duration<double> elapsed_seconds = end-start;
-    std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
+    // std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
     std::ofstream myfile;
     myfile.open ("./omp/omp.csv", std::ios::app);
