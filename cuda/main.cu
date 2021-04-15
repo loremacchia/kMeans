@@ -108,7 +108,7 @@ int main(int argc, char const *argv[]) {
 
 
     std::ofstream myfile;
-    myfile.open ("cuda.csv", std::ios::app);
+    myfile.open ("./cuda/cuda.csv", std::ios::app);
     myfile << dataLength;
     myfile << "," << outerTime;
     myfile << "\n";

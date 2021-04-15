@@ -61,7 +61,7 @@ int main(int argc, char const *argv[]) {
     printf("\n%f\n",outerTime);
 
     std::ofstream myfile;
-    myfile.open ("cpp.csv", std::ios::app);
+    myfile.open ("./cpp/cpp.csv", std::ios::app);
     myfile << dataLength;
     myfile << "," << outerTime;
     myfile << "\n";

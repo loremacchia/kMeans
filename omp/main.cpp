@@ -82,7 +82,7 @@ int main(int argc, char const *argv[]) {
     std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
     std::ofstream myfile;
-    myfile.open ("omp.csv", std::ios::app);
+    myfile.open ("./omp/omp.csv", std::ios::app);
     myfile << dataLength;
     printf("\n\nomp: %f\n\n\n",elapsed_seconds.count());
     myfile << "," << elapsed_seconds.count();
