@@ -16,17 +16,21 @@ double* getFarCentroids(double *points, int pointsLength, int dimensions);
 const int k = 3;
 int main(int argc, char const *argv[]) {
 
-    int dataLength;
-    int dimensions;
-    double *points = getDataset(&dataLength, &dimensions);
-    double *centroids = getFarCentroids(points, dataLength, dimensions);
-    
-    double distanceFromOld = 0;
-    int pointsInCluster[k]; 
-    double *newCentroids = new double[k*dimensions];
+    int dataLength; // Length of the dataset. It is set by getDataset()
+    int dimensions; // Dimension of the dataset. It is set by getDataset()
+    double *points = getDataset(&dataLength, &dimensions); // Getting the dataset from the file dataset.csv
+    double *centroids = getFarCentroids(points, dataLength, dimensions); // Cluster initialization
+
+    double distanceFromOld = 0; // Variable to chek in the stopping condition. It is the distance of the new set of centroids wrt the old one
+    // Representation of a cluster i: centroids[i*dimensions:(i+1)*dimensions-1], pointsInCluster[i], newCentroids[i*dimensions:(i+1)*dimensions-1]
+    int pointsInCluster[k]; // Number of points in a cluster i
+    double *newCentroids = new double[k*dimensions]; // Temp values of the evaluated new centroids for each cluster
+
 
     auto start = std::chrono::system_clock::now();
+    // Loop to calculate the final clusters
     do {
+        // Init new values
         for (int x = 0; x < k; x++) {
             pointsInCluster[x] = 0;
         }
@@ -59,6 +63,8 @@ int main(int argc, char const *argv[]) {
 //            }
 //            pointsInCluster[clustId[i]]++;
         }
+        // Assignment of the point to a cluster adding the point's coordinates to the relative centroids 
+        // and incrementing the number of points in cluster
         for(int i = 0; i < dataLength; i++) {
             for (int x = 0; x < dimensions; x++) {
                 newCentroids[clustId[i] * dimensions + x] += points[i * dimensions + x];
@@ -66,21 +72,22 @@ int main(int argc, char const *argv[]) {
             pointsInCluster[clustId[i]]++;
         }
 
+        // Setting the correct values of newCentroids and updating distanceFromOld and centroids to the actual values
         distanceFromOld = 0;
-
         for (int j = 0; j < k; j++) {
             for (int x = 0; x < dimensions; x++) {
                 newCentroids[j*dimensions + x] /= pointsInCluster[j];
                 distanceFromOld += fabs(newCentroids[j*dimensions + x] - centroids[j*dimensions + x]);
                 centroids[j*dimensions + x] = newCentroids[j*dimensions + x];
             }
-        }    
-    } while (distanceFromOld > 0.001);
+        }
+    } while (distanceFromOld > 0.001); // Check stopping condition
     
     auto end = std::chrono::system_clock::now();
-    std::chrono::duration<double> elapsed_seconds = end-start;
+    std::chrono::duration<double> elapsed_seconds = end-start; // Computation time
     // std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
 
+    //Write the computational time into a CSV file
     std::ofstream myfile;
     myfile.open ("./omp/omp.csv", std::ios::app);
     myfile << dataLength;
@@ -93,14 +100,14 @@ int main(int argc, char const *argv[]) {
 }
 
 
-
-
+// Getting the dataset from the CSV file. The last k values are the correct centroids
 double* getDataset(int* lenght, int* dim) {
     rapidcsv::Document doc("./dataset.csv", rapidcsv::LabelParams(-1, -1));
     const int rows = int(doc.GetRowCount()) - k;
     const int dimensions = doc.GetColumnCount() - 1;
     *lenght = rows;
     *dim = dimensions;
+    // printf("%d\n",rows);
     double *points = new double[rows*dimensions];
     for(int i = 0; i < rows; i++) {
         std::vector<std::string> row = doc.GetRow<std::string>(i);  
@@ -116,6 +123,8 @@ double* getDataset(int* lenght, int* dim) {
     return points;
 }
 
+// Centroids initialization function
+// The centroids are: a random point from the set (for us the first) and the k-1 furthest points of the set
 double* getFarCentroids(double *points, int pointsLength, int dimensions) {
     // Init set of clusters picking a point from the set and the k - 1 points further wrt the chosen point.
     // Those will be the firts clustroids
@@ -125,7 +134,7 @@ double* getFarCentroids(double *points, int pointsLength, int dimensions) {
     }
     
     double *distances = new double[k-1]; 
-    double *realPoints = new double[k*dimensions]; // Array containing the further points wrt reference
+    double *realPoints = new double[k*dimensions]; // Array containing the furthest points wrt reference
     for (int tmpIdx = 0; tmpIdx < dimensions; tmpIdx++) {
         realPoints[(k-1)*dimensions + tmpIdx] = reference[tmpIdx];
     }
