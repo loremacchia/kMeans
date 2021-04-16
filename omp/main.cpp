@@ -39,15 +39,17 @@ int main(int argc, char const *argv[]) {
             newCentroids[x] = 0;
         }
         double dist;
-        int* clustId = new int[dataLength];
+        int* clustId = new int[dataLength]; //variable that save the cluster index of each point during iterations of the following for cycle
         double newDist;
+        
+        //This omp pragma parallelize the following for cycle. dist and newDist become private variables for each running thread because they must be modified atomically by everyone
 #pragma omp parallel for num_threads(8) private(dist, newDist)
         for (int i = 0; i < dataLength; i++) {
             dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
             clustId[i] = -1; // Id of the nearest Cluster
             for (int j = 0; j < k; j++) {
                 newDist = 0; //Distance from each Cluster
-                //#pragma omp parallel for shared(points, centroids) reduction(+: newDist)
+                //#pragma omp parallel for shared(points, centroids) reduction(+: newDist)    //This pragma implements reduction for the calculation of newDist, but it slow down the program for the few iterations of the for
                 for (int x = 0; x < dimensions; x++) {
                     newDist += fabs(points[i*dimensions + x] - centroids[j*dimensions + x]);
                 }
@@ -56,12 +58,7 @@ int main(int argc, char const *argv[]) {
                     clustId[i] = j;
                 }
             }
-//            int tid = omp_get_thread_num();
-//            printf("\nT%d -> clustId: %d",tid,clustId[i]);
-//            for (int x = 0; x < dimensions; x++) {
-//                newCentroids[clustId[i] * dimensions + x] += points[i * dimensions + x];
-//            }
-//            pointsInCluster[clustId[i]]++;
+
         }
         // Assignment of the point to a cluster adding the point's coordinates to the relative centroids 
         // and incrementing the number of points in cluster
