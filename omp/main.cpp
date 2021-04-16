@@ -45,7 +45,7 @@ int main(int argc, char const *argv[]) {
         //This omp pragma parallelize the following for cycle. dist and newDist become private variables for each running thread because they must be modified atomically by everyone
 #pragma omp parallel for num_threads(8) private(dist, newDist)
         for (int i = 0; i < dataLength; i++) {
-            dist = 100; // Updated distance from point to the nearest Cluster. Init with a big value. TODO check if it is enough
+            dist = 100; // Updated distance from point to the nearest Cluster
             clustId[i] = -1; // Id of the nearest Cluster
             for (int j = 0; j < k; j++) {
                 newDist = 0; //Distance from each Cluster
